@@ -4,25 +4,31 @@ let framerate = 5;
 
 function setup() {
   createCanvas(480, 360);
+  pixelDensity(1);
 
   frameRate(framerate);
   capture = createCapture(VIDEO);
   capture.size(width / videoscale, height / videoscale);
   capture.hide();
 
-  background(30);
+  background(255);
 }
 
 function draw() {
   capture.loadPixels();
-  const newPixels = blur(capture.pixels, capture.width, capture.height);
-  const { edgeData, maxEdge } = edgeDetection(newPixels, capture.width, capture.height);
+  const blurredPixels = blur(capture.pixels, capture.width, capture.height);
+  const { edgeData, maxEdge, avgEdge } = edgeDetection(
+    blurredPixels,
+    capture.width,
+    capture.height
+  );
   for (let cy = 0; cy < capture.height; cy += 1) {
     for (let cx = 0; cx < capture.width; cx += 1) {
       const edgeIndex = findPixelOffsetIndex(cx, cy, capture.width, 1);
       colorMode(HSB, 100);
-      const saturation = map(edgeData[edgeIndex], 0, 255, 0, 100);
-      const bright = map(edgeData[edgeIndex], 0, maxEdge, 0, 100);
+      const edge = edgeData[edgeIndex] > avgEdge ? edgeData[edgeIndex] : 0;
+      const saturation = map(edge, 0, 255, 0, 100);
+      const bright = 100 - map(edge, 0, maxEdge, 0, 100);
       const color = 77; // purple
       fill(color, saturation, bright);
       noStroke();
@@ -32,11 +38,38 @@ function draw() {
   }
 }
 
+// function threshold(pixels, width, height) {
+//   const newPixels = [];
+//   for (let y = 0; y < height; y++) {
+//     for (let x = 0; x < width; x++) {
+//       const index = findPixelOffsetIndex(x, y, width, 4);
+//       const red = pixels[index];
+//       const green = pixels[index + 1];
+//       const blue = pixels[index + 2];
+//       const alpha = pixels[index + 3];
+//       const col = color(red, green, blue, alpha);
+//       if (brightness(col) > 25) {
+//         newPixels.push(...[255, 255, 255, 255]);
+//       } else {
+//         newPixels.push(...[0, 0, 0, 0]);
+//       }
+//     }
+//   }
+//   return newPixels;
+// }
+
 function blur(pixels, width, height) {
+  // const blurFilter = [
+  //   [1, 2, 1],
+  //   [2, 4, 2],
+  //   [1, 2, 1],
+  // ];
   const blurFilter = [
-    [1, 2, 1],
-    [2, 4, 2],
-    [1, 2, 1],
+    [2, 8, 12, 8, 2],
+    [8, 32, 48, 32, 8],
+    [12, 48, 72, 48, 12],
+    [8, 32, 48, 32, 8],
+    [2, 8, 12, 8, 2],
   ];
 
   const newPixels = [];
@@ -63,6 +96,8 @@ function edgeDetection(pixels, width, height) {
   ];
 
   let max = 0;
+  let count = 0;
+  let sum = 0;
   let edgeData = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -71,9 +106,11 @@ function edgeDetection(pixels, width, height) {
       let edge = sqrt(sq(edgeVertical) + sq(edgeHorizontal));
       edgeData.push(edge);
       max = Math.max(edge);
+      sum += edge;
+      count++;
     }
   }
-  return new EdgeDetectionResult(edgeData, max);
+  return new EdgeDetectionResult(edgeData, max, sum / count);
 }
 
 // filter needs to be an nxn matrix, where n is an odd number and >= 3
@@ -132,8 +169,9 @@ class ConvolusionResult {
 }
 
 class EdgeDetectionResult {
-  constructor(edgeData, maxEdge) {
+  constructor(edgeData, maxEdge, avgEdge) {
     this.edgeData = edgeData;
     this.maxEdge = maxEdge;
+    this.avgEdge = avgEdge;
   }
 }
