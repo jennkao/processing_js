@@ -1,6 +1,7 @@
 let capture;
 let videoscale = 2;
 let framerate = 5;
+let color = 0;
 
 function setup() {
   createCanvas(480, 360);
@@ -29,13 +30,14 @@ function draw() {
       const edge = edgeData[edgeIndex] > avgEdge ? edgeData[edgeIndex] : 0;
       const saturation = map(edge, 0, 255, 0, 100);
       const bright = 100 - map(edge, 0, maxEdge, 0, 100);
-      const color = 77; // purple
       fill(color, saturation, bright);
       noStroke();
       rect(cx * videoscale, cy * videoscale, videoscale, videoscale);
       colorMode(RGB);
     }
   }
+  color += 10;
+  color = color % 100;
 }
 
 // function threshold(pixels, width, height) {
