@@ -6,15 +6,15 @@
  *  Plot over time.
  */
 
-var source, fft;
-let started = false;
+let source, fft;
+let cnv;
 
-var divisions = 1; // controls whether the page is divided in to halves / thirds etc.
-var cnv;
-var _speed = 0; // used if wanted to scroll the waves along the y axis
+let started = false;
+const NUM_PAGE_DIVISIONS = 1; // controls whether the page is divided in to halves / thirds etc.
+const _SPEED = 0; // used if wanted to scroll the waves along the y axis
 
 function setup() {
-  // // mimics the autoplay policy
+  // mimics the autoplay policy
   getAudioContext().suspend();
 
   cnv = createCanvas(windowWidth, windowHeight);
@@ -28,59 +28,94 @@ function setup() {
   fft.setInput(source);
 }
 
-let colorInd = 0;
-let count = 0;
+const NUM_WAVE_COLOR_CYCLES = 100;
+let cycleCount = 0;
 let waveColors = [
-  [68, 93, 137],
-  [136, 150, 180],
-  [154, 173, 205],
-  [116, 156, 197],
+  [117, 160, 201],
+  [131, 154, 208],
+  [113, 119, 176],
+  [82, 106, 155],
 ];
+let waveColorInd = 0;
 function draw() {
-  count++;
-  count = count % 500;
-  if (count === 0) {
-    colorInd++;
-    colorInd = colorInd % waveColors.length;
+  cycleCount++;
+  cycleCount = cycleCount % NUM_WAVE_COLOR_CYCLES;
+  if (cycleCount === 0) {
+    waveColorInd++;
+    waveColorInd = waveColorInd % waveColors.length;
   }
 
-  var h = height / divisions;
-  var spectrum = fft.analyze();
+  const spectrum = fft.analyze();
+  const scaledSpectrum = splitOctaves(spectrum, 12);
 
-  var scaledSpectrum = splitOctaves(spectrum, 12);
+  drawBackground();
 
-  background(253, 207, 186, 40); // alpha controls whether previous lines stay around
   drawSun();
 
-  // draw shape
   stroke(0, 100);
-  fill(...waveColors[colorInd]);
+  const nextColorInd = (waveColorInd + 1) % waveColors.length;
+  const blendedWaveColor = lerpColor(
+    color(...waveColors[waveColorInd]),
+    color(...waveColors[nextColorInd]),
+    cycleCount / NUM_WAVE_COLOR_CYCLES
+  );
+  drawWave(scaledSpectrum, blendedWaveColor);
+}
+
+const BACKGROUND_SECTIONS = 12;
+function drawBackground() {
+  stroke('white');
+  strokeWeight(2);
+  background(255, 255, 255, 0);
+  rectMode(CORNER);
+  const darkSkyColor = color(231, 151, 177);
+  const lightSkyColor = color(254, 215, 200);
+  const heightPerSection = height / BACKGROUND_SECTIONS;
+  for (let i = 0; i < BACKGROUND_SECTIONS; i++) {
+    const blendedSkyColor = lerpColor(darkSkyColor, lightSkyColor, i / BACKGROUND_SECTIONS);
+    fill(red(blendedSkyColor), green(blendedSkyColor), blue(blendedSkyColor), 60); // alpha controls whether previous lines stay around
+    rect(0, heightPerSection * i, width, heightPerSection);
+  }
+}
+
+const SUN_RADIAL_SECTIONS = 100;
+function drawSun() {
+  const darkSunColor = color(253, 94, 83);
+  const lightSunColor = color(250, 147, 106);
+  const x = width / 2;
+  const y = height / 3;
+  const diameter = height / 2.5;
+  noStroke();
+  for (let i = SUN_RADIAL_SECTIONS; i >= 0; i--) {
+    const blendedColor = lerpColor(lightSunColor, darkSunColor, i / 100);
+    const dia = map(i, 0, SUN_RADIAL_SECTIONS, 0, diameter);
+    fill(blendedColor);
+    circle(x, y, dia);
+  }
+}
+
+function drawWave(scaledSpectrum, color) {
+  const maxWaveHeight = height / NUM_PAGE_DIVISIONS;
+  noStroke();
+  fill(color);
   beginShape();
-  vertex(0, 0);
+  curveVertex(0, 0);
 
   // one at the left corner
-  curveVertex(0, h);
+  vertex(0, maxWaveHeight);
 
-  for (var i = 0; i < scaledSpectrum.length; i++) {
-    var point = smoothPoint(scaledSpectrum, i, 2);
-    var x = map(i, 0, scaledSpectrum.length - 1, 0, width);
-    var y = map(point, 0, 255, h, 0);
+  for (let i = 0; i < scaledSpectrum.length; i++) {
+    const smoothedPoint = smoothPoint(scaledSpectrum, i, 2);
+    const x = map(i, 0, scaledSpectrum.length - 1, 0, width);
+    const y = map(smoothedPoint, 0, 255, maxWaveHeight, 0);
     curveVertex(x, y);
   }
 
   // one last point at right corner
-  vertex(width, h);
+  curveVertex(width, maxWaveHeight);
+  vertex(width, 0);
 
   endShape();
-}
-
-function drawSun() {
-  var x = width / 2;
-  var y = height / 3;
-  var diameter = height / 2;
-  noStroke();
-  fill(229, 55, 18);
-  circle(x, y, diameter);
 }
 
 /**
@@ -97,26 +132,26 @@ function drawSun() {
  *                                 of octaves
  */
 function splitOctaves(spectrum, slicesPerOctave) {
-  var scaledSpectrum = [];
-  var len = spectrum.length;
+  const scaledSpectrum = [];
+  const len = spectrum.length;
 
   // default to 3 slices per octave
-  var n = slicesPerOctave || 3;
-  var nthRootOfTwo = Math.pow(2, 1 / n);
+  const n = slicesPerOctave || 3;
+  const nthRootOfTwo = Math.pow(2, 1 / n);
 
   // the last N bins are not scaled
-  var lowestBin = slicesPerOctave;
+  const lowestBin = slicesPerOctave;
 
   // iterate spectrum in reverse from last bin of the spectrum
   // to the val of slicesPerOctave
-  var endBinIndex = len - 1;
-  var i = endBinIndex;
+  let endBinIndex = len - 1;
+  let i = endBinIndex;
   while (i > lowestBin) {
-    var nextBinIndex = round(endBinIndex / nthRootOfTwo);
+    const nextBinIndex = round(endBinIndex / nthRootOfTwo);
     if (nextBinIndex === 1) return;
 
-    var total = 0;
-    var numBins = 0;
+    let total = 0;
+    let numBins = 0;
 
     // sum up all the amplitude measurements in the bin group
     for (i = endBinIndex; i > nextBinIndex; i--) {
@@ -126,7 +161,7 @@ function splitOctaves(spectrum, slicesPerOctave) {
 
     // divide total sum by number of bins in group to get the average energy
     // in the bin group
-    var energy = total / numBins;
+    const energy = total / numBins;
     scaledSpectrum.push(energy);
 
     endBinIndex = nextBinIndex;
@@ -146,16 +181,16 @@ function splitOctaves(spectrum, slicesPerOctave) {
 // average a point in an array with its neighbors
 function smoothPoint(spectrum, index, numberOfNeighbors) {
   // default to 2 neighbors on either side
-  var neighbors = numberOfNeighbors || 2;
-  var len = spectrum.length;
+  const neighbors = numberOfNeighbors || 2;
+  const len = spectrum.length;
 
-  var val = 0;
+  let val = 0;
 
   // start below the index
-  var indexMinusNeighbors = index - neighbors;
-  var smoothedPoints = 0;
+  const indexMinusNeighbors = index - neighbors;
+  let smoothedPoints = 0;
 
-  for (var i = indexMinusNeighbors; i < index + neighbors && i < len; i++) {
+  for (let i = indexMinusNeighbors; i < index + neighbors && i < len; i++) {
     // if there is a point at spectrum[i], tally it
     if (typeof spectrum[i] !== 'undefined') {
       val += spectrum[i];
