@@ -87,7 +87,7 @@ function drawSun() {
   const diameter = height / 2.5;
   noStroke();
   for (let i = SUN_RADIAL_SECTIONS; i >= 0; i--) {
-    const blendedColor = lerpColor(lightSunColor, darkSunColor, i / 100);
+    const blendedColor = lerpColor(lightSunColor, darkSunColor, i / SUN_RADIAL_SECTIONS);
     const dia = map(i, 0, SUN_RADIAL_SECTIONS, 0, diameter);
     fill(blendedColor);
     circle(x, y, dia);
