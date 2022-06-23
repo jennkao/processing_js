@@ -57,7 +57,6 @@ function draw() {
   }
 
   faces.forEach((face, ind) => {
-    console.log(face);
     let eleftX = face.pose.leftEye.x;
     let eleftY = face.pose.leftEye.y;
     let erightX = face.pose.rightEye.x;

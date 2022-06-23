@@ -27,8 +27,6 @@ const freqMetadata = {
   treble: { lowHueValue: 255, highHueValue: 360 },
 };
 
-console.log(prevFreqData);
-
 function setup() {
   // mimics the autoplay policy
   getAudioContext().suspend();
