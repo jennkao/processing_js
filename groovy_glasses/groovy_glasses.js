@@ -4,8 +4,9 @@ let faces = null;
 function setup() {
   createCanvas(640, 480);
   vidio = createCapture(VIDEO);
-  poseNet = ml5.poseNet(vidio, modelReady);
   vidio.hide();
+
+  poseNet = ml5.poseNet(vidio, modelReady);
   poseNet.on('pose', gotPoses);
 }
 
@@ -56,6 +57,7 @@ function draw() {
   }
 
   faces.forEach((face, ind) => {
+    console.log(face);
     let eleftX = face.pose.leftEye.x;
     let eleftY = face.pose.leftEye.y;
     let erightX = face.pose.rightEye.x;
