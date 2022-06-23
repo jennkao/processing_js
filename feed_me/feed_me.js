@@ -8,6 +8,8 @@ let level = null;
 let round = null;
 let startBtn = null;
 let roundStartTime = null;
+let correctSound = null;
+let wrongSound = null;
 
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
@@ -47,6 +49,9 @@ function setup() {
 
   startBtn = createButton('start');
   startBtn.hide();
+
+  correctSound = loadSound('./correct_sound.mp3');
+  wrongSound = loadSound('./wrong_sound.mp3');
 }
 
 function gotFace(results) {
@@ -239,6 +244,9 @@ function recalculateScore() {
       if (withinX && withinY) {
         const levelObj = getCurrentLevel();
         score += levelObj.points;
+        correctSound.play();
+      } else {
+        wrongSound.play();
       }
     }
   }
@@ -247,3 +255,6 @@ function recalculateScore() {
 // improvements
 // 1) use mouthpoint circle enclosure instead of min / max of x and y
 // 2) balls should appear further apart
+// 3) more time between levels, awareness of level
+// 4) more types of food / point variety - some fruits high, some bomb
+// 5) multiple foods per round
